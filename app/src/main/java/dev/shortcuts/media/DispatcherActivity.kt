@@ -1,8 +1,9 @@
 package dev.shortcuts.media
 
 import android.app.Activity
-import android.content.Intent
+import android.content.Context
 import android.content.pm.PackageManager
+import android.media.AudioManager
 import android.os.Bundle
 import android.os.SystemClock
 import android.view.KeyEvent
@@ -10,40 +11,34 @@ import android.widget.Toast
 
 /**
  * Reads its own component's meta-data to figure out which media key to send,
- * and optionally which package to target. Then exits immediately.
- *
- * If no `target_package` is set, the intent is broadcast without setPackage(),
- * which lets Android's MediaSession framework route it to the active session.
- * That's the default behavior — it works the same way Bluetooth headphone
- * buttons do.
+ * then dispatches it via AudioManager.dispatchMediaKeyEvent(). This is the
+ * public API for sending media keys to the active session — same path
+ * Bluetooth headphone buttons take. Works on Android 5+.
  */
 class DispatcherActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        val (keyCode, targetPackage) = readMetadata()
+        val keyCode = readKeyCode()
         if (keyCode == null) {
             Toast.makeText(this, "Shortcut misconfigured: no key_code", Toast.LENGTH_SHORT).show()
             finish()
             return
         }
 
-        dispatchMediaKey(keyCode, targetPackage)
+        dispatchMediaKey(keyCode)
         finish()
     }
 
-    private fun readMetadata(): Pair<Int?, String?> {
+    private fun readKeyCode(): Int? {
         val flags = PackageManager.GET_META_DATA or PackageManager.MATCH_DISABLED_COMPONENTS
         val info = try {
-            // componentName here is the activity-alias the user tapped
             packageManager.getActivityInfo(componentName, flags)
         } catch (e: PackageManager.NameNotFoundException) {
-            return null to null
+            return null
         }
-        val keyName = info.metaData?.getString("key_code")
-        val pkg = info.metaData?.getString("target_package")
-        return mapKeyName(keyName) to pkg
+        return mapKeyName(info.metaData?.getString("key_code"))
     }
 
     private fun mapKeyName(name: String?): Int? = when (name?.lowercase()) {
@@ -58,22 +53,10 @@ class DispatcherActivity : Activity() {
         else -> null
     }
 
-    private fun dispatchMediaKey(keyCode: Int, targetPackage: String?) {
-        val eventTime = SystemClock.uptimeMillis()
-        sendKey(keyCode, KeyEvent.ACTION_DOWN, eventTime, targetPackage)
-        sendKey(keyCode, KeyEvent.ACTION_UP, eventTime, targetPackage)
-    }
-
-    private fun sendKey(keyCode: Int, action: Int, eventTime: Long, targetPackage: String?) {
-        val key = KeyEvent(eventTime, eventTime, action, keyCode, 0)
-        val intent = Intent(Intent.ACTION_MEDIA_BUTTON).apply {
-            putExtra(Intent.EXTRA_KEY_EVENT, key)
-            // Only target a specific package if explicitly configured.
-            // Without setPackage(), Android dispatches to the active MediaSession.
-            if (!targetPackage.isNullOrBlank()) {
-                setPackage(targetPackage)
-            }
-        }
-        sendBroadcast(intent)
+    private fun dispatchMediaKey(keyCode: Int) {
+        val audio = getSystemService(Context.AUDIO_SERVICE) as AudioManager
+        val now = SystemClock.uptimeMillis()
+        audio.dispatchMediaKeyEvent(KeyEvent(now, now, KeyEvent.ACTION_DOWN, keyCode, 0))
+        audio.dispatchMediaKeyEvent(KeyEvent(now, now, KeyEvent.ACTION_UP, keyCode, 0))
     }
 }
