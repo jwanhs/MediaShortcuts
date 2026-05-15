@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="dev.shortcuts.media">
+
+    <application
+        android:label="MediaShortcuts"
+        android:icon="@mipmap/ic_launcher"
+        android:allowBackup="false"
+        android:theme="@android:style/Theme.NoDisplay">
+
+        <!-- Real activity that does the work. Not a launcher entry itself. -->
+        <activity
+            android:name=".DispatcherActivity"
+            android:exported="true"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:taskAffinity=""
+            android:theme="@android:style/Theme.NoDisplay" />
+
+        <!-- =========================================================
+             Generic Next - routes to whichever app holds the session
+             ========================================================= -->
+        <activity-alias
+            android:name=".Next"
+            android:targetActivity=".DispatcherActivity"
+            android:label="Next"
+            android:icon="@drawable/ic_next"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <meta-data android:name="key_code" android:value="next" />
+        </activity-alias>
+
+        <!-- =========================================================
+             Generic Previous
+             ========================================================= -->
+        <activity-alias
+            android:name=".Previous"
+            android:targetActivity=".DispatcherActivity"
+            android:label="Previous"
+            android:icon="@drawable/ic_previous"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <meta-data android:name="key_code" android:value="previous" />
+        </activity-alias>
+
+    </application>
+
+</manifest>
